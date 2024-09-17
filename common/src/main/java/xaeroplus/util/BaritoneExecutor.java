@@ -1,8 +1,6 @@
 package xaeroplus.util;
 
 import baritone.api.BaritoneAPI;
-import baritone.api.event.events.PathEvent;
-import baritone.api.event.listener.AbstractBaritoneListener;
 import baritone.api.pathing.goals.GoalXZ;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
@@ -13,12 +11,8 @@ import static net.minecraft.world.level.Level.OVERWORLD;
 
 // avoid classloading this unless baritone is actually present
 // otherwise game crashes
-public final class BaritoneExecutor extends AbstractBaritoneListener {
-    private BaritoneExecutor() {
-        // Registering Baritone's event listener
-        BaritoneAPI.getProvider().getPrimaryBaritone().getGameEventHandler().registerEventListener(this);
-    }
-
+public final class BaritoneExecutor {
+    private BaritoneExecutor() {}
     public static GoalXZ getBaritoneGoalXZ(int x, int z) {
         ResourceKey<Level> customDim = Globals.getCurrentDimensionId();
         ResourceKey<Level> actualDim = ChunkUtils.getActualDimension();
