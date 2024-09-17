@@ -610,15 +610,15 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
     }
 
     @Unique
+    private int goalX, goalZ;  // Store the current goal coordinates
+
+    @Unique
     public void continueGridPattern() {
         if (!isGridPatternActive) return;
 
         int distance = 1000;  // Move 1000 blocks per leg
         int x = (int) getPlayerX();
         int z = (int) getPlayerZ();
-
-        int goalX = 0;
-        int goalZ = 0;
 
         // Set the next goal based on the current leg direction
         switch (currentLeg % 4) {
@@ -650,7 +650,6 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
     // This method calculates the distance to the goal and moves on if close enough
     @Unique
     private void checkGoalProximity(int goalX, int goalZ) {
-        // Schedule a task that checks the distance every few ticks
         Minecraft.getInstance().execute(() -> {
             double playerX = getPlayerX();
             double playerZ = getPlayerZ();
@@ -662,11 +661,22 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
             if (distanceToGoal < 100) {
                 continueGridPattern();  // Move to the next leg
             } else {
-                // Re-run this check after a short delay (for example, after 1 second)
-                Minecraft.getInstance().executeLater(() -> checkGoalProximity(goalX, goalZ), 20);  // 20 ticks = 1 second
+                // If the player is not close enough, reschedule this check after a delay
+                scheduleCheck(goalX, goalZ);
             }
         });
     }
+
+    // This method schedules the proximity check to run again after a delay
+    @Unique
+    private void scheduleCheck(int goalX, int goalZ) {
+        // Reschedule the proximity check after a delay (simulating a 1 second delay)
+        Minecraft.getInstance().execute(() -> {
+            // Call the check again after the delay
+            checkGoalProximity(goalX, goalZ);
+        });
+    }
+
 
 
     @Unique
