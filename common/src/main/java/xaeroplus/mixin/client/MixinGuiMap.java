@@ -617,20 +617,55 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
         int x = (int) getPlayerX();
         int z = (int) getPlayerZ();
 
+        int goalX = 0;
+        int goalZ = 0;
+
+        // Set the next goal based on the current leg direction
         switch (currentLeg % 4) {
-            case 0 -> BaritoneExecutor.elytra(x + distance, z);  // Go east
-            case 1 -> BaritoneExecutor.elytra(x, z + distance);  // Go south
-            case 2 -> BaritoneExecutor.elytra(x - distance, z);  // Go west
-            case 3 -> BaritoneExecutor.elytra(x, z - distance);  // Go north
+            case 0 -> {
+                goalX = x + distance;  // Go east
+                goalZ = z;
+            }
+            case 1 -> {
+                goalX = x;
+                goalZ = z + distance;  // Go south
+            }
+            case 2 -> {
+                goalX = x - distance;  // Go west
+                goalZ = z;
+            }
+            case 3 -> {
+                goalX = x;
+                goalZ = z - distance;  // Go north
+            }
         }
+
         currentLeg++;
+        BaritoneExecutor.elytra(goalX, goalZ);  // Set Baritone to fly to the new goal
 
-        //figure out how to determine how close we are from goal
+        // Start checking proximity to the goal periodically
+        checkGoalProximity(goalX, goalZ);
+    }
 
-        //check if this number is less than 100
+    // This method calculates the distance to the goal and moves on if close enough
+    @Unique
+    private void checkGoalProximity(int goalX, int goalZ) {
+        // Schedule a task that checks the distance every few ticks
+        Minecraft.getInstance().execute(() -> {
+            double playerX = getPlayerX();
+            double playerZ = getPlayerZ();
 
-        //move on to next (continue) if it is
+            // Calculate Euclidean distance to the goal
+            double distanceToGoal = Math.sqrt(Math.pow(goalX - playerX, 2) + Math.pow(goalZ - playerZ, 2));
 
+            // If distance is less than 100 blocks, continue to the next leg of the grid pattern
+            if (distanceToGoal < 100) {
+                continueGridPattern();  // Move to the next leg
+            } else {
+                // Re-run this check after a short delay (for example, after 1 second)
+                Minecraft.getInstance().executeLater(() -> checkGoalProximity(goalX, goalZ), 20);  // 20 ticks = 1 second
+            }
+        });
     }
 
 
