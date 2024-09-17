@@ -100,6 +100,9 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
     @Shadow private int mouseBlockPosZ;
     @Shadow private static double destScale;
     @Shadow private MapTileSelection mapTileSelection;
+    @Unique private static boolean isGridPatternActive = false;  // Track grid pattern state
+    @Unique private static int currentLeg = 0;  // Track the current leg of the pattern
+
 
     protected MixinGuiMap(final Screen parent, final Screen escape, final Component titleIn) {
         super(parent, escape, titleIn);
@@ -565,13 +568,7 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
                         public void onAction(Screen screen) {
                             BaritoneExecutor.path(goalX, goalZ);
                         }
-                    }.setNameFormatArgs(Misc.getKeyName(XaeroPlusSettingRegistry.worldMapBaritonePathHereKeybindSetting.getKeyBinding())),
-                    new RightClickOption("gui.world_map.start_grid", options.size(), this) {
-                        @Override
-                        public void onAction(Screen screen) {
-                            // add logic for starting grid here
-                        }
-                    }
+                    }.setNameFormatArgs(Misc.getKeyName(XaeroPlusSettingRegistry.worldMapBaritonePathHereKeybindSetting.getKeyBinding()))
             ));
             if (BaritoneHelper.isBaritoneElytraPresent()) {
                 options.addAll(5, asList(
@@ -580,7 +577,17 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
                             public void onAction(Screen screen) {
                                 BaritoneExecutor.elytra(goalX, goalZ);
                             }
-                        }.setNameFormatArgs(Misc.getKeyName(XaeroPlusSettingRegistry.worldMapBaritoneElytraHereKeybindSetting.getKeyBinding()))
+                        }.setNameFormatArgs(Misc.getKeyName(XaeroPlusSettingRegistry.worldMapBaritoneElytraHereKeybindSetting.getKeyBinding())),
+                        new RightClickOption(isGridPatternActive ? "Stop Grid Pattern" : "Start Grid Pattern", options.size(), this) {
+                            @Override
+                            public void onAction(Screen screen) {
+                                if (!isGridPatternActive) {
+                                    startGridPattern();
+                                } else {
+                                    stopGridPattern();
+                                }
+                            }
+                        }
                 ));
             }
         }
@@ -589,6 +596,38 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
             cir.getReturnValue().removeIf(option -> ((AccessorRightClickOption) option).getName().equals("gui.xaero_right_click_map_share_location"));
         }
     }
+
+    @Unique
+    public void startGridPattern() {
+        isGridPatternActive = true;
+        currentLeg = 0;
+        continueGridPattern();
+    }
+
+    @Unique
+    public void stopGridPattern() {
+        isGridPatternActive = false;
+        BaritoneExecutor.cancel();  // Cancel any current Baritone actions
+    }
+
+    @Unique
+    public void continueGridPattern() {
+        if (!isGridPatternActive) return;
+
+        int distance = 1000;  // Move 1000 blocks per leg
+        int x = (int) getPlayerX();
+        int z = (int) getPlayerZ();
+
+        switch (currentLeg % 4) {
+            case 0 -> BaritoneExecutor.goal(x + distance, z);  // Go east
+            case 1 -> BaritoneExecutor.goal(x, z + distance);  // Go south
+            case 2 -> BaritoneExecutor.goal(x - distance, z);  // Go west
+            case 3 -> BaritoneExecutor.goal(x, z - distance);  // Go north
+        }
+        currentLeg++;
+        BaritoneExecutor.onGoalReached(() -> continueGridPattern());  // Once the leg is completed, continue
+    }
+
 
     @Unique
     public void addColoredLineToExistingBuffer(
