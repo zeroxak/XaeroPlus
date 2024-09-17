@@ -607,7 +607,6 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
     @Unique
     public void stopGridPattern() {
         isGridPatternActive = false;
-        BaritoneExecutor.cancel();  // Cancel any current Baritone actions
     }
 
     @Unique
@@ -619,13 +618,19 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
         int z = (int) getPlayerZ();
 
         switch (currentLeg % 4) {
-            case 0 -> BaritoneExecutor.goal(x + distance, z);  // Go east
-            case 1 -> BaritoneExecutor.goal(x, z + distance);  // Go south
-            case 2 -> BaritoneExecutor.goal(x - distance, z);  // Go west
-            case 3 -> BaritoneExecutor.goal(x, z - distance);  // Go north
+            case 0 -> BaritoneExecutor.elytra(x + distance, z);  // Go east
+            case 1 -> BaritoneExecutor.elytra(x, z + distance);  // Go south
+            case 2 -> BaritoneExecutor.elytra(x - distance, z);  // Go west
+            case 3 -> BaritoneExecutor.elytra(x, z - distance);  // Go north
         }
         currentLeg++;
-        BaritoneExecutor.onGoalReached(() -> continueGridPattern());  // Once the leg is completed, continue
+
+        //figure out how to determine how close we are from goal
+
+        //check if this number is less than 100
+
+        //move on to next (continue) if it is
+
     }
 
 
