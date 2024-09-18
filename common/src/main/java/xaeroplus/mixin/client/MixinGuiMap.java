@@ -659,7 +659,7 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
             // Calculate Euclidean distance to the goal
             double distanceToGoal = Math.sqrt(Math.pow(goalX - playerX, 2) + Math.pow(goalZ - playerZ, 2));
 
-            // Log only if there is a significant change in proximity (e.g., more than 10 blocks)
+            // Log only if there is a significant change in proximity (optional logic for logging)
             if (lastLoggedDistance == -1 || Math.abs(distanceToGoal - lastLoggedDistance) > 10) {
                 System.out.println("Checking proximity. Goal: " + goalX + ", " + goalZ);
                 System.out.println("Player position: " + playerX + ", " + playerZ);
@@ -677,12 +677,14 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
         });
     }
 
+
     @Unique
     private void scheduleCheck(int goalX, int goalZ) {
-        // Schedule the proximity check to run again after a delay (1 second = 20 ticks)
+        // Simulate a delay using the main thread executor (if no built-in delay mechanism exists)
         Minecraft.getInstance().execute(() -> {
+            // Call the check again after the delay
             checkGoalProximity(goalX, goalZ);
-        }, 20);  // Delay of 20 ticks
+        });
     }
 
 
