@@ -649,23 +649,27 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
 
     // This method calculates the distance to the goal and moves on if close enough
     @Unique
-    private void checkGoalProximity(int goalX, int goalZ) {
-        Minecraft.getInstance().execute(() -> {
-            double playerX = getPlayerX();
-            double playerZ = getPlayerZ();
+private void checkGoalProximity(int goalX, int goalZ) {
+    System.out.println("Checking proximity. Goal: " + goalX + ", " + goalZ);
+    Minecraft.getInstance().execute(() -> {
+        double playerX = getPlayerX();
+        double playerZ = getPlayerZ();
+        System.out.println("Player position: " + playerX + ", " + playerZ);
 
-            // Calculate Euclidean distance to the goal
-            double distanceToGoal = Math.sqrt(Math.pow(goalX - playerX, 2) + Math.pow(goalZ - playerZ, 2));
+        // Calculate Euclidean distance to the goal
+        double distanceToGoal = Math.sqrt(Math.pow(goalX - playerX, 2) + Math.pow(goalZ - playerZ, 2));
+        System.out.println("Distance to goal: " + distanceToGoal);
 
-            // If distance is less than 100 blocks, continue to the next leg of the grid pattern
-            if (distanceToGoal < 100) {
-                continueGridPattern();  // Move to the next leg
-            } else {
-                // If the player is not close enough, reschedule this check after a delay
-                scheduleCheck(goalX, goalZ);
-            }
-        });
-    }
+        // If distance is less than 100 blocks, continue to the next leg of the grid pattern
+        if (distanceToGoal < 100) {
+            continueGridPattern();  // Move to the next leg
+        } else {
+            // If the player is not close enough, reschedule this check after a delay
+            scheduleCheck(goalX, goalZ);
+        }
+    });
+}
+
 
     // This method schedules the proximity check to run again after a delay
     @Unique
