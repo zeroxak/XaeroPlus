@@ -1,5 +1,7 @@
 package xaeroplus.mixin.client;
 
+import java.util.Queue;
+import java.util.LinkedList;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.WrapWithCondition;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
