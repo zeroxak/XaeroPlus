@@ -25,9 +25,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -67,78 +64,6 @@ import static net.minecraft.world.level.Level.*;
 import static xaeroplus.Globals.getCurrentDimensionId;
 import static xaeroplus.util.ChunkUtils.getPlayerX;
 import static xaeroplus.util.ChunkUtils.getPlayerZ;
-
-@Mod.EventBusSubscriber
-public class TickHandler {
-
-    @Unique private static boolean isGridPatternActive = false;
-    @Unique private static int goalX, goalZ;
-    @Unique private static int currentLeg = 0;
-
-    // This method will run on every client tick
-    @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (isGridPatternActive) {
-            checkGoalProximity();  // Check proximity to goal every tick
-        }
-    }
-
-    @Unique
-    public static void checkGoalProximity() {
-        double playerX = getPlayerX();
-        double playerZ = getPlayerZ();
-
-        double distanceToGoal = Math.sqrt(Math.pow(goalX - playerX, 2) + Math.pow(goalZ - playerZ, 2));
-
-        // Log only if there is a significant change in proximity
-        if (Math.abs(distanceToGoal - lastLoggedDistance) > 10) {
-            System.out.println("    Checking proximity. Goal: " + goalX + ", " + goalZ);
-            System.out.println("    Player position: " + playerX + ", " + playerZ);
-            System.out.println("    Distance to goal: " + distanceToGoal);
-            lastLoggedDistance = distanceToGoal;
-        }
-
-        if (distanceToGoal < 250) {
-            continueGridPattern();
-        }
-    }
-
-    @Unique
-    private static double lastLoggedDistance = -1;
-
-    @Unique
-    public static void continueGridPattern() {
-        if (!isGridPatternActive) return;
-
-        int distanceX = 10000;
-        int distanceZ = 2000;
-        int x = (int) getPlayerX();
-        int z = (int) getPlayerZ();
-
-        switch (currentLeg % 4) {
-            case 0 -> {
-                goalX = x - distanceX;
-                goalZ = z;
-            }
-            case 1 -> {
-                goalX = x;
-                goalZ = z - distanceZ;
-            }
-            case 2 -> {
-                goalX = x + distanceX;
-                goalZ = z;
-            }
-            case 3 -> {
-                goalX = x;
-                goalZ = z - distanceZ;
-            }
-        }
-
-        currentLeg++;
-        BaritoneExecutor.elytra(goalX, goalZ);
-    }
-}
-
 
 @Mixin(value = GuiMap.class, remap = false)
 public abstract class MixinGuiMap extends ScreenBase implements IRightClickableElement {
@@ -597,12 +522,12 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
         MapRenderHelper.drawCenteredStringWithBackground(guiGraphics, font, sideLen + " x " + heightLen, scaledMouseX, scaledMouseY - font.lineHeight, -1, 0.0f, 0.0f, 0.0f, 0.4f, backgroundVertexBuffer);
     }
 
-    //@Inject(method = "render", at = @At("HEAD"))
-    //public void checkProximityOnRender(final GuiGraphics guiGraphics, final int scaledMouseX, final int scaledMouseY, final float partialTicks, final CallbackInfo ci) {
-    //    if (isGridPatternActive) {
-    //        checkGoalProximity(goalX, goalZ);  // Check proximity to goal during each render call
-    //    }
-    //}
+    @Inject(method = "render", at = @At("HEAD"))
+    public void checkProximityOnRender(final GuiGraphics guiGraphics, final int scaledMouseX, final int scaledMouseY, final float partialTicks, final CallbackInfo ci) {
+        if (isGridPatternActive) {
+            checkGoalProximity(goalX, goalZ);  // Check proximity to goal during each render call
+        }
+    }
 
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true, remap = true)
     public void onInputPress(final int code, final int scanCode, final int modifiers, final CallbackInfoReturnable<Boolean> cir) {
@@ -681,17 +606,18 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
 
     @Unique
     public void startGridPattern() {
-        TickHandler.isGridPatternActive = true;
-        TickHandler.currentLeg = 0;
-        TickHandler.continueGridPattern();
+        isGridPatternActive = true;
+        currentLeg = 0;
+        continueGridPattern();
         System.out.println("    Grid Started ");
 
     }
 
     @Unique
     public void stopGridPattern() {
-        TickHandler.isGridPatternActive = false;
+        isGridPatternActive = false;
         System.out.println("    Grid Stopped ");
+
     }
 
     @Unique
