@@ -1,7 +1,5 @@
 package xaeroplus.mixin.client;
 
-import java.util.Queue;
-import java.util.LinkedList;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.WrapWithCondition;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
@@ -680,8 +678,8 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
     // Method to plan and queue the next 2-3 goals ahead
     @Unique
     private void planFutureGoals() {
-        int x = goalX;
-        int z = goalZ;
+        int x = (int) getPlayerX();
+        int z = (int) getPlayerZ();
 
         int distanceX = 10000;
         int distanceZ = 2000;
@@ -725,9 +723,11 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
 
         // Calculate Euclidean distance to the goal
         double distanceToGoal = Math.sqrt(Math.pow(goalX - playerX, 2) + Math.pow(goalZ - playerZ, 2));
+        System.out.println("    We are " + distanceToGoal + "blocks away from the goal");
 
         // If the player is close to the goal, proceed to the next leg
         if (distanceToGoal < 250) {
+            System.out.println("    Within 250 blocks of the goal!");
             continueGridPattern();  // Move to the next goal
         }
     }
