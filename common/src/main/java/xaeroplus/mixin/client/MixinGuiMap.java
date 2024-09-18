@@ -522,6 +522,13 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
         MapRenderHelper.drawCenteredStringWithBackground(guiGraphics, font, sideLen + " x " + heightLen, scaledMouseX, scaledMouseY - font.lineHeight, -1, 0.0f, 0.0f, 0.0f, 0.4f, backgroundVertexBuffer);
     }
 
+    @Inject(method = "render", at = @At("HEAD"))
+    public void checkProximityOnRender(final GuiGraphics guiGraphics, final int scaledMouseX, final int scaledMouseY, final float partialTicks, final CallbackInfo ci) {
+        if (isGridPatternActive) {
+            checkGoalProximity(goalX, goalZ);  // Check proximity to goal during each render call
+        }
+    }
+
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true, remap = true)
     public void onInputPress(final int code, final int scanCode, final int modifiers, final CallbackInfoReturnable<Boolean> cir) {
         if (code == 290) {
@@ -652,47 +659,25 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
 
     @Unique
     private void checkGoalProximity(int goalX, int goalZ) {
-        Minecraft.getInstance().execute(() -> {
-            double playerX = getPlayerX();
-            double playerZ = getPlayerZ();
+        double playerX = getPlayerX();
+        double playerZ = getPlayerZ();
 
-            // Calculate Euclidean distance to the goal
-            double distanceToGoal = Math.sqrt(Math.pow(goalX - playerX, 2) + Math.pow(goalZ - playerZ, 2));
+        // Calculate Euclidean distance to the goal
+        double distanceToGoal = Math.sqrt(Math.pow(goalX - playerX, 2) + Math.pow(goalZ - playerZ, 2));
 
-            // Log only if there is a significant change in proximity (optional logic for logging)
-            if (lastLoggedDistance == -1 || Math.abs(distanceToGoal - lastLoggedDistance) > 10) {
-                System.out.println("Checking proximity. Goal: " + goalX + ", " + goalZ);
-                System.out.println("Player position: " + playerX + ", " + playerZ);
-                System.out.println("Distance to goal: " + distanceToGoal);
-                lastLoggedDistance = distanceToGoal;  // Update the logged distance
-            }
+        // Log only if there is a significant change in proximity
+        if (lastLoggedDistance == -1 || Math.abs(distanceToGoal - lastLoggedDistance) > 10) {
+            System.out.println("Checking proximity. Goal: " + goalX + ", " + goalZ);
+            System.out.println("Player position: " + playerX + ", " + playerZ);
+            System.out.println("Distance to goal: " + distanceToGoal);
+            lastLoggedDistance = distanceToGoal;  // Update the logged distance
+        }
 
-            // If distance is less than 100 blocks, continue to the next leg of the grid pattern
-            if (distanceToGoal < 100) {
-                continueGridPattern();  // Move to the next leg
-            } else {
-                // If the player is not close enough, reschedule this check after a delay
-                scheduleCheck(goalX, goalZ);
-            }
-        });
+        // If distance is less than 100 blocks, continue to the next leg of the grid pattern
+        if (distanceToGoal < 100) {
+            continueGridPattern();  // Move to the next leg
+        }
     }
-
-
-    @Unique
-    private void scheduleCheck(int goalX, int goalZ) {
-        // Delay the next proximity check by 1 second (20 ticks)
-        Minecraft.getInstance().execute(() -> {
-            try {
-                Thread.sleep(1000);  // Introduce a 1-second delay
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            checkGoalProximity(goalX, goalZ);
-        });
-    }
-
-
-
 
     @Unique
     public void addColoredLineToExistingBuffer(
