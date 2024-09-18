@@ -682,7 +682,8 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
         }
 
         // If distance is less than 100 blocks, continue to the next leg of the grid pattern
-        if (distanceToGoal < 100) {
+        if (distanceToGoal < 250) {
+
             continueGridPattern();  // Move to the next leg
         }
     }
