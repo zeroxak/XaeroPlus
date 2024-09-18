@@ -53,6 +53,13 @@ import xaeroplus.settings.XaeroPlusSettingRegistry;
 import xaeroplus.util.BaritoneExecutor;
 import xaeroplus.util.BaritoneHelper;
 import xaeroplus.util.ChunkUtils;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.minecraft.client.Minecraft;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+import xaero.map.gui.GuiMap;
+import xaero.map.WorldMap;
+import xaeroplus.util.BaritoneExecutor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -68,6 +75,7 @@ import static xaeroplus.util.ChunkUtils.getPlayerZ;
 @Mixin(value = GuiMap.class, remap = false)
 public abstract class MixinGuiMap extends ScreenBase implements IRightClickableElement {
 
+
     @Unique private static boolean isGridPatternActive = false;
     @Unique private static int currentLeg = 0;
     @Unique private int goalX, goalZ;
@@ -75,15 +83,12 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
 
     @Inject(method = "<init>", at = @At("RETURN"))
     public void onInit(CallbackInfo ci) {
-        // Register the tick event to check proximity or run any logic even when map is closed
-        MinecraftForge.EVENT_BUS.register(this);
-    }
-
-    @SubscribeEvent
-    public void onClientTick(TickEvent.ClientTickEvent event) {
-        if (Minecraft.getInstance().player != null && isGridPatternActive) {
-            checkGoalProximity(goalX, goalZ); // Check proximity every tick
-        }
+        // Register a client tick handler to check proximity or run logic
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (Minecraft.getInstance().player != null && isGridPatternActive) {
+                checkGoalProximity(goalX, goalZ); // Check proximity every tick
+            }
+        });
     }
 
     @Unique
@@ -91,6 +96,7 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
         double playerX = getPlayerX();
         double playerZ = getPlayerZ();
 
+        // Calculate Euclidean distance to the goal
         double distanceToGoal = Math.sqrt(Math.pow(goalX - playerX, 2) + Math.pow(goalZ - playerZ, 2));
 
         if (lastLoggedDistance == -1 || Math.abs(distanceToGoal - lastLoggedDistance) > 10) {
@@ -100,6 +106,7 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
             lastLoggedDistance = distanceToGoal;
         }
 
+        // If distance is less than 100 blocks, continue to the next leg of the grid pattern
         if (distanceToGoal < 250) {
             continueGridPattern(); // Move to the next leg
         }
@@ -109,11 +116,12 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
     public void continueGridPattern() {
         if (!isGridPatternActive) return;
 
-        int distanceX = 10000;
-        int distanceZ = 2000;
+        int distanceX = 10000;  // Move 10,000 blocks on the X-axis
+        int distanceZ = 2000;   // Move 2,000 blocks on the Z-axis
         int x = (int) getPlayerX();
         int z = (int) getPlayerZ();
 
+        // Set the next goal based on the current leg direction of the grid pattern
         switch (currentLeg % 4) {
             case 0 -> goalX = x - distanceX;  // Go west (-x)
             case 1 -> goalZ = z - distanceZ;  // Go north (-z)
