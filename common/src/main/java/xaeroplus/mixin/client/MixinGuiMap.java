@@ -680,12 +680,17 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
 
     @Unique
     private void scheduleCheck(int goalX, int goalZ) {
-        // Simulate a delay using the main thread executor (if no built-in delay mechanism exists)
+        // Delay the next proximity check by 1 second (20 ticks)
         Minecraft.getInstance().execute(() -> {
-            // Call the check again after the delay
+            try {
+                Thread.sleep(1000);  // Introduce a 1-second delay
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
             checkGoalProximity(goalX, goalZ);
         });
     }
+
 
 
 
