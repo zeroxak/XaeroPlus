@@ -60,6 +60,8 @@ import org.spongepowered.asm.mixin.Unique;
 import xaero.map.gui.GuiMap;
 import xaero.map.WorldMap;
 import xaeroplus.util.BaritoneExecutor;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+
 
 import java.util.ArrayList;
 import java.util.List;
@@ -177,8 +179,6 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
     @Shadow private int mouseBlockPosZ;
     @Shadow private static double destScale;
     @Shadow private MapTileSelection mapTileSelection;
-    @Unique private static boolean isGridPatternActive = false;  // Track grid pattern state
-    @Unique private static int currentLeg = 0;  // Track the current leg of the pattern
 
 
     protected MixinGuiMap(final Screen parent, final Screen escape, final Component titleIn) {
