@@ -53,15 +53,6 @@ import xaeroplus.settings.XaeroPlusSettingRegistry;
 import xaeroplus.util.BaritoneExecutor;
 import xaeroplus.util.BaritoneHelper;
 import xaeroplus.util.ChunkUtils;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.minecraft.client.Minecraft;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
-import xaero.map.gui.GuiMap;
-import xaero.map.WorldMap;
-import xaeroplus.util.BaritoneExecutor;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-
 
 import java.util.ArrayList;
 import java.util.List;
@@ -76,76 +67,6 @@ import static xaeroplus.util.ChunkUtils.getPlayerZ;
 
 @Mixin(value = GuiMap.class, remap = false)
 public abstract class MixinGuiMap extends ScreenBase implements IRightClickableElement {
-
-
-    @Unique private static boolean isGridPatternActive = false;
-    @Unique private static int currentLeg = 0;
-    @Unique private int goalX, goalZ;
-    @Unique private double lastLoggedDistance = -1;
-
-    @Inject(method = "<init>", at = @At("RETURN"))
-    public void onInit(CallbackInfo ci) {
-        // Register a client tick handler to check proximity or run logic
-        ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (Minecraft.getInstance().player != null && isGridPatternActive) {
-                checkGoalProximity(goalX, goalZ); // Check proximity every tick
-            }
-        });
-    }
-
-    @Unique
-    private void checkGoalProximity(int goalX, int goalZ) {
-        double playerX = getPlayerX();
-        double playerZ = getPlayerZ();
-
-        // Calculate Euclidean distance to the goal
-        double distanceToGoal = Math.sqrt(Math.pow(goalX - playerX, 2) + Math.pow(goalZ - playerZ, 2));
-
-        if (lastLoggedDistance == -1 || Math.abs(distanceToGoal - lastLoggedDistance) > 10) {
-            System.out.println("Checking proximity. Goal: " + goalX + ", " + goalZ);
-            System.out.println("Player position: " + playerX + ", " + playerZ);
-            System.out.println("Distance to goal: " + distanceToGoal);
-            lastLoggedDistance = distanceToGoal;
-        }
-
-        // If distance is less than 100 blocks, continue to the next leg of the grid pattern
-        if (distanceToGoal < 250) {
-            continueGridPattern(); // Move to the next leg
-        }
-    }
-
-    @Unique
-    public void continueGridPattern() {
-        if (!isGridPatternActive) return;
-
-        int distanceX = 10000;  // Move 10,000 blocks on the X-axis
-        int distanceZ = 2000;   // Move 2,000 blocks on the Z-axis
-        int x = (int) getPlayerX();
-        int z = (int) getPlayerZ();
-
-        // Set the next goal based on the current leg direction of the grid pattern
-        switch (currentLeg % 4) {
-            case 0 -> goalX = x - distanceX;  // Go west (-x)
-            case 1 -> goalZ = z - distanceZ;  // Go north (-z)
-            case 2 -> goalX = x + distanceX;  // Go east (+x)
-            case 3 -> goalZ = z - distanceZ;  // Go north (-z)
-        }
-
-        currentLeg++;
-        BaritoneExecutor.elytra(goalX, goalZ);  // Set Baritone to fly to the new goal
-    }
-
-    @Unique
-    private double getPlayerX() {
-        return Minecraft.getInstance().player.getX();
-    }
-
-    @Unique
-    private double getPlayerZ() {
-        return Minecraft.getInstance().player.getZ();
-    }
-
-
     @Unique private static boolean follow = false;
     @Unique boolean pan;
     @Unique double panMouseStartX;
@@ -179,6 +100,8 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
     @Shadow private int mouseBlockPosZ;
     @Shadow private static double destScale;
     @Shadow private MapTileSelection mapTileSelection;
+    @Unique private static boolean isGridPatternActive = false;  // Track grid pattern state
+    @Unique private static int currentLeg = 0;  // Track the current leg of the pattern
 
 
     protected MixinGuiMap(final Screen parent, final Screen escape, final Component titleIn) {
@@ -599,6 +522,13 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
         MapRenderHelper.drawCenteredStringWithBackground(guiGraphics, font, sideLen + " x " + heightLen, scaledMouseX, scaledMouseY - font.lineHeight, -1, 0.0f, 0.0f, 0.0f, 0.4f, backgroundVertexBuffer);
     }
 
+    @Inject(method = "render", at = @At("HEAD"))
+    public void checkProximityOnRender(final GuiGraphics guiGraphics, final int scaledMouseX, final int scaledMouseY, final float partialTicks, final CallbackInfo ci) {
+        if (isGridPatternActive) {
+            checkGoalProximity(goalX, goalZ);  // Check proximity to goal during each render call
+        }
+    }
+
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true, remap = true)
     public void onInputPress(final int code, final int scanCode, final int modifiers, final CallbackInfoReturnable<Boolean> cir) {
         if (code == 290) {
@@ -674,20 +604,130 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
         }
     }
 
+    @Unique private Queue<int[]> futureGoals = new LinkedList<>(); // Queue for storing future goals
+    @Unique private int goalX, goalZ;  // Current goal coordinates
+
     @Unique
     public void startGridPattern() {
         isGridPatternActive = true;
         currentLeg = 0;
+        planFutureGoals();  // Pre-plan the next few goals
         continueGridPattern();
         System.out.println("    Grid Started ");
-
     }
 
     @Unique
     public void stopGridPattern() {
         isGridPatternActive = false;
+        futureGoals.clear();  // Clear the queue when stopping the grid pattern
         System.out.println("    Grid Stopped ");
+    }
 
+    @Unique
+    public void continueGridPattern() {
+        if (!isGridPatternActive) return;
+
+        // Use the next pre-planned goal from the queue
+        if (!futureGoals.isEmpty()) {
+            int[] nextGoal = futureGoals.poll();  // Retrieve and remove the next goal from the queue
+            goalX = nextGoal[0];
+            goalZ = nextGoal[1];
+        } else {
+            // If the queue is empty, calculate the next goal dynamically
+            calculateNextGoal();
+        }
+
+        System.out.println("Next Goal: X=" + goalX + ", Z=" + goalZ);
+        BaritoneExecutor.elytra(goalX, goalZ);  // Set Baritone to fly to the new goal
+        checkGoalProximity(goalX, goalZ);  // Check proximity to the goal
+        planFutureGoals();  // Ensure future goals are always planned
+    }
+
+    // Method to calculate the immediate next goal if the queue is empty
+    @Unique
+    private void calculateNextGoal() {
+        int x = (int) getPlayerX();
+        int z = (int) getPlayerZ();
+
+        int distanceX = 10000;  // Distance for X-axis movement
+        int distanceZ = 2000;   // Distance for Z-axis movement
+
+        // Determine the next goal based on the current leg of the grid pattern
+        switch (currentLeg % 4) {
+            case 0 -> {  // Go west (-x)
+                goalX = x - distanceX;
+                goalZ = z;
+            }
+            case 1 -> {  // Go north (-z)
+                goalX = x;
+                goalZ = z - distanceZ;
+            }
+            case 2 -> {  // Go east (+x)
+                goalX = x + distanceX;
+                goalZ = z;
+            }
+            case 3 -> {  // Go north (-z)
+                goalX = x;
+                goalZ = z - distanceZ;
+            }
+        }
+
+        currentLeg++;  // Increment the current leg of the grid pattern
+    }
+
+    // Method to plan and queue the next 2-3 goals ahead
+    @Unique
+    private void planFutureGoals() {
+        int x = goalX;
+        int z = goalZ;
+
+        int distanceX = 10000;
+        int distanceZ = 2000;
+
+        // Plan the next 2-3 goals and store them in the futureGoals queue
+        while (futureGoals.size() < 3) {
+            int[] futureGoal = new int[2];
+
+            // Calculate the next leg's goal based on the current leg of the grid pattern
+            switch (currentLeg % 4) {
+                case 0 -> {  // Go west (-x)
+                    futureGoal[0] = x - distanceX;
+                    futureGoal[1] = z;
+                }
+                case 1 -> {  // Go north (-z)
+                    futureGoal[0] = x;
+                    futureGoal[1] = z - distanceZ;
+                }
+                case 2 -> {  // Go east (+x)
+                    futureGoal[0] = x + distanceX;
+                    futureGoal[1] = z;
+                }
+                case 3 -> {  // Go north (-z)
+                    futureGoal[0] = x;
+                    futureGoal[1] = z - distanceZ;
+                }
+            }
+
+            futureGoals.add(futureGoal);  // Add the new goal to the queue
+            x = futureGoal[0];
+            z = futureGoal[1];
+            currentLeg++;
+        }
+    }
+
+    // Check proximity to the current goal and proceed to the next one when close enough
+    @Unique
+    private void checkGoalProximity(int goalX, int goalZ) {
+        double playerX = getPlayerX();
+        double playerZ = getPlayerZ();
+
+        // Calculate Euclidean distance to the goal
+        double distanceToGoal = Math.sqrt(Math.pow(goalX - playerX, 2) + Math.pow(goalZ - playerZ, 2));
+
+        // If the player is close to the goal, proceed to the next leg
+        if (distanceToGoal < 250) {
+            continueGridPattern();  // Move to the next goal
+        }
     }
 
 
