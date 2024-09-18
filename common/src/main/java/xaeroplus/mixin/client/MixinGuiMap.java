@@ -647,38 +647,42 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
         checkGoalProximity(goalX, goalZ);
     }
 
-    // This method calculates the distance to the goal and moves on if close enough
     @Unique
-private void checkGoalProximity(int goalX, int goalZ) {
-    System.out.println("Checking proximity. Goal: " + goalX + ", " + goalZ);
-    Minecraft.getInstance().execute(() -> {
-        double playerX = getPlayerX();
-        double playerZ = getPlayerZ();
-        System.out.println("Player position: " + playerX + ", " + playerZ);
+    private double lastLoggedDistance = -1;  // Track last logged distance
 
-        // Calculate Euclidean distance to the goal
-        double distanceToGoal = Math.sqrt(Math.pow(goalX - playerX, 2) + Math.pow(goalZ - playerZ, 2));
-        System.out.println("Distance to goal: " + distanceToGoal);
+    @Unique
+    private void checkGoalProximity(int goalX, int goalZ) {
+        Minecraft.getInstance().execute(() -> {
+            double playerX = getPlayerX();
+            double playerZ = getPlayerZ();
 
-        // If distance is less than 100 blocks, continue to the next leg of the grid pattern
-        if (distanceToGoal < 100) {
-            continueGridPattern();  // Move to the next leg
-        } else {
-            // If the player is not close enough, reschedule this check after a delay
-            scheduleCheck(goalX, goalZ);
-        }
-    });
-}
+            // Calculate Euclidean distance to the goal
+            double distanceToGoal = Math.sqrt(Math.pow(goalX - playerX, 2) + Math.pow(goalZ - playerZ, 2));
 
+            // Log only if there is a significant change in proximity (e.g., more than 10 blocks)
+            if (lastLoggedDistance == -1 || Math.abs(distanceToGoal - lastLoggedDistance) > 10) {
+                System.out.println("Checking proximity. Goal: " + goalX + ", " + goalZ);
+                System.out.println("Player position: " + playerX + ", " + playerZ);
+                System.out.println("Distance to goal: " + distanceToGoal);
+                lastLoggedDistance = distanceToGoal;  // Update the logged distance
+            }
 
-    // This method schedules the proximity check to run again after a delay
+            // If distance is less than 100 blocks, continue to the next leg of the grid pattern
+            if (distanceToGoal < 100) {
+                continueGridPattern();  // Move to the next leg
+            } else {
+                // If the player is not close enough, reschedule this check after a delay
+                scheduleCheck(goalX, goalZ);
+            }
+        });
+    }
+
     @Unique
     private void scheduleCheck(int goalX, int goalZ) {
-        // Reschedule the proximity check after a delay (simulating a 1 second delay)
+        // Schedule the proximity check to run again after a delay (1 second = 20 ticks)
         Minecraft.getInstance().execute(() -> {
-            // Call the check again after the delay
             checkGoalProximity(goalX, goalZ);
-        });
+        }, 20);  // Delay of 20 ticks
     }
 
 
