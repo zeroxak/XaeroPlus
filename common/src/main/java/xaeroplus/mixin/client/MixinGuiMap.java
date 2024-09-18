@@ -609,11 +609,15 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
         isGridPatternActive = true;
         currentLeg = 0;
         continueGridPattern();
+        System.out.println("    Grid Started ");
+
     }
 
     @Unique
     public void stopGridPattern() {
         isGridPatternActive = false;
+        System.out.println("    Grid Stopped ");
+
     }
 
     @Unique
@@ -623,31 +627,35 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
     public void continueGridPattern() {
         if (!isGridPatternActive) return;
 
-        int distance = 1000;  // Move 1000 blocks per leg
+        int distanceX = 10000;  // Move 10,000 blocks on the X-axis
+        int distanceZ = 2000;   // Move 2,000 blocks on the Z-axis
         int x = (int) getPlayerX();
         int z = (int) getPlayerZ();
 
-        // Set the next goal based on the current leg direction
+        // Set the next goal based on the current leg direction of the grid pattern
         switch (currentLeg % 4) {
             case 0 -> {
-                goalX = x + distance;  // Go east
+                goalX = x - distanceX;  // Go west (-x)
                 goalZ = z;
             }
             case 1 -> {
                 goalX = x;
-                goalZ = z + distance;  // Go south
+                goalZ = z - distanceZ;  // Go north (-z)
             }
             case 2 -> {
-                goalX = x - distance;  // Go west
+                goalX = x + distanceX;  // Go east (+x)
                 goalZ = z;
             }
             case 3 -> {
                 goalX = x;
-                goalZ = z - distance;  // Go north
+                goalZ = z - distanceZ;  // Go north (-z)
             }
         }
 
         currentLeg++;
+
+        System.out.println("    Leg Started: " + currentLeg);
+
         BaritoneExecutor.elytra(goalX, goalZ);  // Set Baritone to fly to the new goal
 
         // Start checking proximity to the goal periodically
@@ -667,9 +675,9 @@ public abstract class MixinGuiMap extends ScreenBase implements IRightClickableE
 
         // Log only if there is a significant change in proximity
         if (lastLoggedDistance == -1 || Math.abs(distanceToGoal - lastLoggedDistance) > 10) {
-            System.out.println("Checking proximity. Goal: " + goalX + ", " + goalZ);
-            System.out.println("Player position: " + playerX + ", " + playerZ);
-            System.out.println("Distance to goal: " + distanceToGoal);
+            System.out.println("    Checking proximity. Goal: " + goalX + ", " + goalZ);
+            System.out.println("    Player position: " + playerX + ", " + playerZ);
+            System.out.println("    Distance to goal: " + distanceToGoal);
             lastLoggedDistance = distanceToGoal;  // Update the logged distance
         }
 
